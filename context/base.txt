@@ -1,0 +1,4 @@
+banana 10
+limão 20
+tomate 30000
+pão do zé 304

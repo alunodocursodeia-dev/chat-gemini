@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" / >
+    <title>Chat Particular com Gemini</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #ffffff;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        header {
+            background: #0f172a;
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        header p {
+            margin: 6px 0 0;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .message {
+            margin-bottom: 14px;
+            padding: 12px;
+            border-radius: 10px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .user {
+            background: #3b82f6;
+            color: white;
+            margin-left: 80px;
+        }
+
+        .bot {
+            background: #f1f5f9;
+            margin-right: 80px;
+        }
+
+        .label {
+            font-weight: bold;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        form {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        input {
+            flex: 1;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #94a3b8;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 14px 18px;
+            border: none;
+            border-radius: 10px;
+            background: #0f172a;
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1e293b;
+        }
+
+        button:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+        }
+
+        .actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .secondary {
+            background: #475569;
+            padding: 10px 14px;
+            font-size: 14px;
+        }
+
+        .secondary:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Chat Particular com Gemini</h1>
+            <p>Responde usando os arquivos TXT da pasta context.</p>
+        </header>
+        <main id="chat">
+            <div class="message bot">
+                <span class="label">Assistente</span>
+                Olá. Envie uma pergunta sobre o material TXT carregado.
+            </div>
+        </main>
+        <form id="form">
+            <input id="message" type="text" placeholder="Digite sua pergunta..." autocomplete="off" />
+            <button id="send" type="submit">Enviar</button>
+        </form>
+        <div class="actions">
+            <button class="secondary" id="reset" type="button">Limpar histórico
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById("form");
+        const input = document.getElementById("message");
+        const chat = document.getElementById("chat");
+        const sendButton = document.getElementById("send");
+        const resetButton = document.getElementById("reset");
+        function addMessage(type, text) {
+            const div = document.createElement("div");
+            div.className = `message ${type}`;
+            const label = document.createElement("span");
+            label.className = "label";
+            label.textContent = type === "user" ? "Você" : "Assistente";
+            const content = document.createElement("div");
+            content.textContent = text;
+            div.appendChild(label);
+            div.appendChild(content);
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const message = input.value.trim();
+            if (!message) {
+                return;
+            }
+            addMessage("user", message);
+            input.value = "";
+            sendButton.disabled = true;
+            sendButton.textContent = "Enviando...";
+            try {
+                const response = await fetch("/api/chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ message }),
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    addMessage("bot", data.error || "Erro ao processar a resposta.");
+                    return;
+                }
+                addMessage("bot", data.answer);
+            } catch (error) {
+                addMessage("bot", "Erro de conexão com o servidor.");
+            } finally {
+                sendButton.disabled = false;
+                sendButton.textContent = "Enviar";
+                input.focus();
+            }
+        });
+        resetButton.addEventListener("click", async () => {
+            await fetch("/api/reset", {
+                method: "POST",
+            });
+            chat.innerHTML = "";
+            addMessage(
+                "bot",
+                "Histórico apagado. Envie uma nova pergunta sobre o material TXT."
+            );
+        });
+    </script>
+</body>
+</html>
